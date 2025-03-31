@@ -1,0 +1,15 @@
+{
+  "name": "talkniabasic",
+  "version": "1.0.0",
+  "description": "A bridge between Discord and Telegram messages",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.11.0",
+    "dotenv": "^16.0.3",
+    "grammy": "^1.x.x"
+  }
+}
