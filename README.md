@@ -110,9 +110,9 @@ TELEGRAM_GROUP_ID=your_telegram_group_id
         - Select your group
    
    4. Get the group ID:
-      - First method (using getUpdates):
-        1. Add the bot to your group
-        2. Send a message in the group mentioning the bot (e.g. "Hello @your_bot")
+      - Method 1 (using getUpdates):
+        1. Add your bot to the group
+        2. Send a message in the group (a simple "test" will do)
         3. Open this URL in your browser (replace YOUR_BOT_TOKEN):
            ```
            https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates
@@ -132,21 +132,21 @@ TELEGRAM_GROUP_ID=your_telegram_group_id
              }]
            }
            ```
-        5. Copy the "id" value (including the minus sign if present)
+        5. Copy the "id" value (including the minus sign)
         6. Add this ID to `TELEGRAM_GROUP_ID` in `.env`
 
-      - Alternative method (if getUpdates shows no results):
-        1. Add @RawDataBot to your group
-        2. The bot will automatically send a message with group info
-        3. Look for "Chat ID" in the message
-        4. Copy the ID (including the minus sign)
-        5. Remove @RawDataBot from your group
-        6. Add this ID to `TELEGRAM_GROUP_ID` in `.env`
+      - Method 2 (using IDBot):
+        1. Add [@username_to_id_bot](https://t.me/username_to_id_bot) to your group
+        2. The bot will show the group ID when added
+        3. Copy the ID (including the minus sign)
+        4. Remove the bot from your group
+        5. Add this ID to `TELEGRAM_GROUP_ID` in `.env`
 
       Note: If getUpdates shows no data:
-      - Make sure you sent a message AFTER adding the bot
-      - Try removing and re-adding the bot to the group
-      - Try the alternative method with @RawDataBot
+      - Make sure you sent a message AFTER adding your bot
+      - Try removing and re-adding your bot to the group
+      - Make sure you disabled Privacy Mode (see step 2)
+      - Try Method 2 with the ID bot
 
 ## Running the Bot
 

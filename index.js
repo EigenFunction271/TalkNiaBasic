@@ -24,17 +24,21 @@ app.get('/health', (req, res) => {
 
 let discordBot = null;
 
+// Start Express server first
+const server = app.listen(port, () => {
+  console.log(`Web server running on port ${port}`);
+  // Then start the bot
+  startBridge().catch(error => {
+    console.error('Failed to start bridge:', error);
+    process.exit(1);
+  });
+});
+
 async function startBridge() {
     try {
         const relay = initializeRelay();
         discordBot = await startDiscordBot(relay);
         const telegramBot = await startTelegramBot(relay);
-
-        // Start Express server
-        app.listen(port, () => {
-            console.log(`Web server running on port ${port}`);
-        });
-
         console.log('Messenger Bridge is running!');
     } catch (error) {
         console.error('Failed to start Messenger Bridge:', error);
@@ -45,8 +49,8 @@ async function startBridge() {
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received. Shutting down gracefully...');
-  // Add any cleanup here if needed
-  process.exit(0);
-});
-
-startBridge(); 
+  server.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
+  });
+}); 
