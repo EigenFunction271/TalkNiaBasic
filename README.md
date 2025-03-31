@@ -284,4 +284,215 @@ For beginners, I recommend Oracle Cloud Free Tier because:
 - Never expires
 - Most generous resources
 - Full VM access
-- No credit card required for free resources 
+- No credit card required for free resources
+
+### Oracle Cloud Deployment Guide
+
+1. **Create Oracle Cloud Account**:
+   - Go to [Oracle Cloud Free Tier](https://www.oracle.com/cloud/free/)
+   - Click "Start for free"
+   - Complete registration (no credit card required)
+   - Verify your email
+
+2. **Create VM Instance**:
+   - Login to Oracle Cloud Console
+   - Go to Menu → Compute → Instances
+   - Click "Create Instance"
+   - Name your instance (e.g., "discord-telegram-bot")
+   - Under "Image and shape":
+     - Select "Ubuntu 22.04" as the operating system
+     - Choose "VM.Standard.A1.Flex" (ARM-based) or "VM.Standard.E2.1.Micro" (x86)
+     - For RAM and OCPU, stay within Always Free limits
+   - Under "Networking":
+     - Create new VCN (or use existing)
+     - Create new subnet (or use existing)
+   - Under "Add SSH keys":
+     - Choose "Generate a key pair for me"
+     - Download the private key file (.key)
+   - Click "Create"
+
+3. **Connect to Your Instance**:
+   - Save the downloaded private key as `oracle.key`
+   - On Windows:
+     ```bash
+     # Convert key permissions (in Git Bash or WSL)
+     chmod 400 oracle.key
+     
+     # Connect (replace with your instance's public IP)
+     ssh -i oracle.key ubuntu@<YOUR_INSTANCE_IP>
+     ```
+   - On Mac/Linux:
+     ```bash
+     chmod 400 oracle.key
+     ssh -i oracle.key ubuntu@<YOUR_INSTANCE_IP>
+     ```
+
+4. **Setup Environment**:
+   ```bash
+   # Update system
+   sudo apt update && sudo apt upgrade -y
+
+   # Install Node.js
+   curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+   sudo apt install -y nodejs
+
+   # Install PM2
+   sudo npm install -g pm2
+
+   # Create project directory
+   mkdir discord-telegram-bot
+   cd discord-telegram-bot
+   ```
+
+5. **Deploy Your Bot**:
+   ```bash
+   # Clone your repository
+   git clone <your-repo-url> .
+
+   # Install dependencies
+   npm install
+
+   # Create .env file
+   nano .env
+   ```
+
+   Add your environment variables:
+   ```env
+   DISCORD_TOKEN=your_discord_token
+   DISCORD_CHANNEL_ID=your_channel_id
+   TELEGRAM_TOKEN=your_telegram_token
+   TELEGRAM_GROUP_ID=your_group_id
+   ```
+
+6. **Start the Bot**:
+   ```bash
+   # Start with PM2
+   pm2 start index.js --name "discord-telegram-bot"
+
+   # Save PM2 configuration
+   pm2 save
+
+   # Setup PM2 to start on system reboot
+   pm2 startup
+   # Run the command that PM2 outputs
+   ```
+
+7. **Monitor Your Bot**:
+   ```bash
+   # Check status
+   pm2 status
+
+   # View logs
+   pm2 logs discord-telegram-bot
+
+   # Monitor resources
+   pm2 monit
+   ```
+
+8. **Security Tips**:
+   - Update the security list for your VCN:
+     - Go to Networking → Virtual Cloud Networks
+     - Click your VCN
+     - Click your subnet's security list
+     - Add ingress rules only for necessary ports
+
+9. **Troubleshooting**:
+   - Check logs: `pm2 logs`
+   - Restart bot: `pm2 restart discord-telegram-bot`
+   - Check system resources: `htop` (install with `sudo apt install htop`)
+   - Check Node.js version: `node --version`
+
+### Render.com Deployment Guide
+
+1. **Prepare Your Repository**:
+   - Push your code to a GitHub repository
+   - Make sure your repository includes:
+     ```
+     talkniabasic/
+     ├── src/
+     ├── index.js
+     ├── package.json
+     └── .gitignore
+     ```
+   - Add a `start` script in package.json:
+     ```json
+     {
+       "scripts": {
+         "start": "node index.js"
+       }
+     }
+     ```
+
+2. **Sign Up for Render**:
+   - Go to [render.com](https://render.com)
+   - Click "Sign Up"
+   - Choose "Sign up with GitHub"
+   - Authorize Render to access your repositories
+
+3. **Create New Web Service**:
+   - Click "New +"
+   - Select "Web Service"
+   - Choose your repository
+   - Configure service:
+     - Name: "discord-telegram-bot" (or your preference)
+     - Environment: "Node"
+     - Build Command: `npm install`
+     - Start Command: `npm start`
+     - Instance Type: "Free"
+
+4. **Set Environment Variables**:
+   - Scroll down to "Environment Variables"
+   - Add each variable from your `.env` file:
+     ```
+     DISCORD_TOKEN=your_discord_token
+     DISCORD_CHANNEL_ID=your_channel_id
+     TELEGRAM_TOKEN=your_telegram_token
+     TELEGRAM_GROUP_ID=your_group_id
+     ```
+   - Click "Save Changes"
+
+5. **Deploy**:
+   - Click "Create Web Service"
+   - Wait for the initial deployment to complete
+
+6. **Monitor Your Deployment**:
+   - View logs in the "Logs" tab
+   - Check deployment status in "Events"
+   - Monitor resource usage in "Metrics"
+
+7. **Important Notes**:
+   - Free tier limitations:
+     - Service sleeps after 15 minutes of inactivity
+     - 750 hours per month of runtime
+     - Automatic HTTPS
+     - Automatic deploys on git push
+   - To prevent sleeping:
+     - Add a simple health check endpoint to your bot
+     - Use an uptime monitoring service (like UptimeRobot)
+
+8. **Troubleshooting**:
+   - Check "Logs" for any errors
+   - Verify environment variables are set correctly
+   - Ensure start command matches your package.json
+   - Check if the service is in "sleep" mode
+
+9. **Keep Bot Active (Optional)**:
+   Add this code to your `index.js` to create a basic web server:
+   ```javascript
+   const express = require('express');
+   const app = express();
+   const port = process.env.PORT || 3000;
+
+   app.get('/', (req, res) => {
+     res.send('Bot is running!');
+   });
+
+   app.listen(port, () => {
+     console.log(`Web server running on port ${port}`);
+   });
+   ```
+   
+   Add Express to your dependencies:
+   ```bash
+   npm install express
+   ``` 
