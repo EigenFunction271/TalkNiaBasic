@@ -1,0 +1,39 @@
+{
+  "mappings": [
+    {
+      "name": "Community Bridge",
+      "discord": {
+        "serverId": "discord_server_id",
+        "serverName": "My Discord Server",
+        "channels": [
+          {
+            "id": "discord_general_channel_id",
+            "name": "general",
+            "mappedTo": "main-chat"
+          },
+          {
+            "id": "discord_announcements_channel_id",
+            "name": "announcements",
+            "mappedTo": "announcements"
+          }
+        ]
+      },
+      "telegram": {
+        "groupId": "-telegram_group_id",
+        "groupName": "My Telegram Group",
+        "channels": [
+          {
+            "id": "-telegram_chat_id_1",
+            "name": "main-chat",
+            "type": "group"
+          },
+          {
+            "id": "-telegram_chat_id_2",
+            "name": "announcements",
+            "type": "channel"
+          }
+        ]
+      }
+    }
+  ]
+} 

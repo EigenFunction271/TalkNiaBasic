@@ -1,12 +1,14 @@
 # TalkNiaBasic - Discord-Telegram Bridge
 
-A simple message bridge that relays messages between Discord and Telegram channels.
+A flexible message bridge that relays messages between specific Discord and Telegram channels.
 
 ## Features
 
 - Bidirectional message relay between Discord and Telegram
+- Support for multiple channel-to-channel mappings within servers/groups
+- Map specific Discord channels to specific Telegram chats
 - Shows sender's username and platform
-- Simple setup with environment variables
+- Simple REST API for managing mappings
 - Basic error handling and logging
 
 ## Prerequisites
@@ -14,8 +16,8 @@ A simple message bridge that relays messages between Discord and Telegram channe
 - Node.js 18.x or higher
 - A Discord Bot Token (from Discord Developer Portal)
 - A Telegram Bot Token (from BotFather)
-- A Discord server with a designated channel
-- A Telegram group
+- Discord server(s) with designated channels
+- Telegram group(s)
 
 ## Setup
 
@@ -32,12 +34,11 @@ npm install
 
 3. **Configure the environment**
    
-Create a `.env` file in the root directory with the following variables:
+Create a `.env` file in the root directory with:
 ```env
 DISCORD_TOKEN=your_discord_bot_token
-DISCORD_CHANNEL_ID=your_discord_channel_id
 TELEGRAM_TOKEN=your_telegram_bot_token
-TELEGRAM_GROUP_ID=your_telegram_group_id
+PORT=3000  # For Render deployment
 ```
 
 4. **Discord Bot Setup**
@@ -45,7 +46,7 @@ TELEGRAM_GROUP_ID=your_telegram_group_id
    2. Click "New Application" and name your bot
    3. Go to the "Bot" section in the left sidebar
    4. Click "Add Bot" → "Yes, do it!"
-   5. Under the bot's username, copy the token and add it to `DISCORD_TOKEN` in `.env`
+   5. Copy the token and add it to `DISCORD_TOKEN` in `.env`
    6. Enable Message Content Intent:
       - Scroll down to "Privileged Gateway Intents"
       - Toggle ON "Message Content Intent"
@@ -53,100 +54,148 @@ TELEGRAM_GROUP_ID=your_telegram_group_id
    7. Generate invite link:
       - Go to "OAuth2" → "URL Generator" in the left sidebar
       - Under "INTEGRATION TYPE", select "Guild Install"
-      - Under "Scopes", select:
-        - `bot`
+      - Under "Scopes", select `bot`
       - Under "Bot Permissions", select:
-        - "View Channels"
+        - "Read Messages/View Channels"
         - "Send Messages"
         - "Read Message History"
-      - The URL should be in this format:
-        ```
-        https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=PERMISSION_NUMBER&scope=bot%20messages.read
-        ```
-      - If you still can't copy the generated URL:
-        1. Go back to the "General Information" page
-        2. Copy your "Application ID" (also called Client ID)
-        3. Replace YOUR_CLIENT_ID in the URL above with your Application ID
-        4. The PERMISSION_NUMBER should be the sum of the permissions you selected (for our case, use: 68608)
-      - Paste the final URL into your browser
-      - You'll be taken to Discord's server selection page
-      - Select the server where you want to add the bot
-      - Click "Continue" and then "Authorize"
-      - Complete the captcha if prompted
-   8. Get Channel ID:
-      - Open Discord Settings → "App Settings" → "Advanced"
-      - Enable "Developer Mode"
-      - Right-click the channel you want to use
-      - Click "Copy Channel ID"
-      - Add this ID to `DISCORD_CHANNEL_ID` in `.env`
+      - Copy the generated URL
+      - Open the URL to invite the bot to your server(s)
 
 5. **Telegram Bot Setup**
-   1. Create the bot:
-      - Open Telegram and message [@BotFather](https://t.me/botfather)
-      - Send `/newbot` command
-      - Choose a name for your bot (this is the display name)
-      - Choose a username for your bot (must end in 'bot')
-      - BotFather will give you a token - copy it to `TELEGRAM_TOKEN` in `.env`
-   
-   2. Configure bot settings (required):
-      - Send `/setprivacy` to @BotFather
-      - Select your bot 
-      - Select 'Disable' to allow bot to see all messages
-      - Send `/setjoingroups` to @BotFather
-      - Select your bot
-      - Select 'Enable' to allow your bot to be added to groups
-      - Wait a few minutes for these settings to take effect
-   
-   3. Add bot to your group:
-      - Make sure you've waited a few minutes after configuring settings
-      - Open your Telegram group
-      - Click the group name at the top to open group settings
-      - Click 'Add members' or 'Add user'
-      - Search for your bot using its username 
-      - If the bot doesn't appear in search:
-        - Try using the direct link: t.me/[Bot username] (replace with your bot's username)
-        - Click the bot's name
-        - Click 'Add to Group'
-        - Select your group
-   
-   4. Get the group ID:
-      - Method 1 (using getUpdates):
-        1. Add your bot to the group
-        2. Send a message in the group (a simple "test" will do)
-        3. Open this URL in your browser (replace YOUR_BOT_TOKEN):
-           ```
-           https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates
-           ```
-        4. Look for a response like this:
-           ```json
-           {
-             "ok": true,
-             "result": [{
-               "message": {
-                 "chat": {
-                   "id": -123456789,  // This is your group ID
-                   "title": "Your Group Name",
-                   "type": "group"
-                 }
-               }
-             }]
-           }
-           ```
-        5. Copy the "id" value (including the minus sign)
-        6. Add this ID to `TELEGRAM_GROUP_ID` in `.env`
+   1. Message [@BotFather](https://t.me/botfather) on Telegram
+   2. Send `/newbot` command
+   3. Choose a name and username
+   4. Copy the token to `TELEGRAM_TOKEN` in `.env`
+   5. Send `/setprivacy` to @BotFather
+   6. Select your bot
+   7. Select 'Disable' to allow bot to see all messages
+   8. Add the bot to your Telegram group(s)
 
-      - Method 2 (using IDBot):
-        1. Add [@username_to_id_bot](https://t.me/username_to_id_bot) to your group
-        2. The bot will show the group ID when added
-        3. Copy the ID (including the minus sign)
-        4. Remove the bot from your group
-        5. Add this ID to `TELEGRAM_GROUP_ID` in `.env`
+6. **Create Initial Configuration**
 
-      Note: If getUpdates shows no data:
-      - Make sure you sent a message AFTER adding your bot
-      - Try removing and re-adding your bot to the group
-      - Make sure you disabled Privacy Mode (see step 2)
-      - Try Method 2 with the ID bot
+Create `config/mappings.json`:
+```json
+{
+  "mappings": []
+}
+```
+
+## Channel Mapping Setup
+
+### 1. Gather Required IDs
+
+1. **Discord IDs**:
+   - Enable Developer Mode in Discord Settings → App Settings → Advanced
+   - Get Server ID: Right-click server → Copy Server ID
+   - Get Channel IDs: Right-click each channel → Copy ID
+   - Note down channel names exactly as they appear
+
+2. **Telegram IDs**:
+   - Add bot to your group
+   - Send a message in each relevant chat
+   - Visit: `https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates`
+   - Find:
+     - Group ID: "chat": {"id": -XXXXXX}
+     - Individual chat IDs if using multiple chats
+
+### 2. Create Channel Mapping
+
+Use the `/mappings/channels` endpoint to create a mapping:
+
+```bash
+curl -X POST http://your-render-url/mappings/channels \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Community Bridge",
+    "discord": {
+      "serverId": "123456789",
+      "serverName": "My Discord Server",
+      "channels": [
+        {
+          "id": "111111",
+          "name": "general",
+          "mappedTo": "main-chat"
+        },
+        {
+          "id": "222222",
+          "name": "announcements",
+          "mappedTo": "announcements"
+        }
+      ]
+    },
+    "telegram": {
+      "groupId": "-987654321",
+      "groupName": "My Telegram Group",
+      "channels": [
+        {
+          "id": "-111111",
+          "name": "main-chat",
+          "type": "group"
+        },
+        {
+          "id": "-222222",
+          "name": "announcements",
+          "type": "channel"
+        }
+      ]
+    }
+  }'
+```
+
+### 3. Managing Mappings
+
+1. **View all mappings**:
+```bash
+curl http://your-render-url/mappings
+```
+
+2. **Delete a mapping**:
+```bash
+curl -X DELETE http://your-render-url/mappings/Community%20Bridge
+```
+
+## Deployment on Render
+
+1. Push your code to GitHub
+2. Create new Web Service on Render
+3. Connect your repository
+4. Configure:
+   - Name: "discord-telegram-bot"
+   - Environment: "Node"
+   - Build Command: `npm install`
+   - Start Command: `npm start`
+   - Add Environment Variables:
+     - `DISCORD_TOKEN`
+     - `TELEGRAM_TOKEN`
+     - `PORT`
+
+## Troubleshooting
+
+1. **Messages not being relayed**:
+   - Verify channel names match exactly in mappings
+   - Check `mappedTo` fields are correct
+   - Ensure bot has access to all channels
+   - Check Discord Message Content Intent
+   - Verify Telegram privacy mode is disabled
+
+2. **Channel mapping issues**:
+   - Confirm all IDs are correct
+   - Check JSON format in mappings
+   - Verify channel names match exactly
+   - Ensure unique `mappedTo` values
+
+3. **API errors**:
+   - Check all required fields in requests
+   - Verify JSON formatting
+   - Ensure unique mapping names
+   - Check server logs for details
+
+## Health Checks
+
+- Basic check: `GET /`
+- Detailed status: `GET /health`
+- View mappings: `GET /mappings`
 
 ## Running the Bot
 
@@ -201,22 +250,37 @@ The bot will:
 
 This project is licensed under the ISC License.
 
+## Security Setup
+
+For security, sensitive files are not committed to Git. You'll need to:
+
+1. Copy the example files:
+```bash
+cp config/channels.example.json config/channels.json
+cp .env.example .env
+```
+
+2. Edit `.env` with your tokens:
+```env
+DISCORD_TOKEN=your_discord_bot_token    # From Discord Developer Portal
+TELEGRAM_TOKEN=your_telegram_bot_token  # From BotFather
+PORT=3000
+```
+
+3. Edit `config/channels.json` with your channel mappings
+
+⚠️ IMPORTANT: Never commit `.env` or `channels.json` to Git!
+
 ## Security Notes
 
-The project uses some deprecated packages that are dependencies of node-telegram-bot-api:
-- request and request-promise (deprecated but functional)
-- har-validator (deprecated but functional)
-- uuid v3 (older version, but safe for this use case)
-
-While these packages are deprecated, they are still functional for our basic bot implementation. The bot:
-- Only communicates with official Discord and Telegram APIs
-- Doesn't expose any web endpoints
-- Doesn't process sensitive user data
-
-If you need enhanced security for your use case, consider:
-- Using alternative Telegram bot libraries
-- Implementing additional security measures
-- Regular security audits of dependencies
+To keep your bot secure:
+1. Keep your bot tokens private
+2. Don't share your `channels.json` file
+3. Don't commit sensitive files to Git
+4. Use environment variables for tokens
+5. Keep your bot's permissions minimal:
+   - Discord: Only request necessary permissions
+   - Telegram: Only add bot to groups it needs to be in
 
 ## Deployment
 
@@ -495,4 +559,181 @@ For beginners, I recommend Oracle Cloud Free Tier because:
    Add Express to your dependencies:
    ```bash
    npm install express
-   ``` 
+   ```
+
+## Easy Channel Setup
+
+Instead of using API endpoints, you can directly edit the `config/channels.json` file:
+
+1. Create `config/channels.json` if it doesn't exist
+2. Copy this template:
+```json
+{
+  "bridges": [
+    {
+      "name": "General Chat Bridge",
+      "discord": {
+        "serverId": "YOUR_DISCORD_SERVER_ID",
+        "serverName": "Your Server Name",
+        "channels": [
+          {
+            "id": "YOUR_DISCORD_CHANNEL_ID",
+            "name": "general",
+            "mappedTo": "main-chat"
+          }
+        ]
+      },
+      "telegram": {
+        "groupId": "YOUR_TELEGRAM_GROUP_ID",
+        "groupName": "Your Telegram Group",
+        "channels": [
+          {
+            "id": "YOUR_TELEGRAM_CHAT_ID",
+            "name": "main-chat",
+            "type": "group"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+3. Replace the placeholder values:
+   - `YOUR_DISCORD_SERVER_ID`: Right-click your Discord server → Copy Server ID
+   - `YOUR_DISCORD_CHANNEL_ID`: Right-click the Discord channel → Copy ID
+   - `YOUR_TELEGRAM_GROUP_ID`: Get from bot API or group info (include the minus sign)
+   - `YOUR_TELEGRAM_CHAT_ID`: Same as group ID for single-channel groups
+
+4. You can add multiple bridges by adding more objects to the `bridges` array
+
+Example with real values:
+```json
+{
+  "bridges": [
+    {
+      "name": "Gaming Chat",
+      "discord": {
+        "serverId": "123456789012345678",
+        "serverName": "Gaming Server",
+        "channels": [
+          {
+            "id": "123456789012345678",
+            "name": "general",
+            "mappedTo": "main-chat"
+          }
+        ]
+      },
+      "telegram": {
+        "groupId": "-1001234567890",
+        "groupName": "Gaming Group",
+        "channels": [
+          {
+            "id": "-1001234567890",
+            "name": "main-chat",
+            "type": "group"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+The bot will automatically load any changes to this file when it starts up.
+
+## Render Deployment Notes
+
+For channel mappings on Render, you have two options:
+
+1. **Manual Setup (Recommended for beginners)**:
+   ```bash
+   # In Render Shell
+   mkdir -p config
+   nano config/channels.json
+   # Paste your configuration
+   ```
+
+2. **Environment Variable Setup**:
+   - Go to your service Dashboard
+   - Add Environment Variable:
+     - Key: `CHANNEL_MAPPINGS`
+     - Value: Your entire channels.json content (as a single line)
+   
+Note: Any changes to channel mappings will require either:
+- Using Render's Shell to edit config/channels.json
+- Updating the CHANNEL_MAPPINGS environment variable
+- Redeploying the service 
+
+## Managing Channel Mappings on Render
+
+### Option 1: Environment Variable Setup (Recommended)
+
+1. **Prepare Your Mappings**:
+   ```bash
+   # Run the management script
+   npm run manage-mappings
+   ```
+   This will:
+   - Read your existing mappings
+   - Format them for Render
+   - Save a backup
+   - Show you the value to copy
+
+2. **Add to Render**:
+   1. Go to your Render Dashboard
+   2. Select your service
+   3. Click "Environment"
+   4. Add new variable:
+      - Key: `CHANNEL_MAPPINGS`
+      - Value: Paste the entire output from the script
+   5. Click "Save Changes"
+
+3. **Update Mappings Later**:
+   1. Edit your local `config/channels.json`
+   2. Run `npm run manage-mappings` again
+   3. Copy the new value
+   4. Update the environment variable in Render
+   5. Redeploy your service
+
+Example environment variable format:
+```json
+{"bridges":[{"name":"Gaming Chat","discord":{"serverId":"123456789012345678","serverName":"Gaming Server","channels":[{"id":"123456789012345678","name":"general","mappedTo":"main-chat"}]},"telegram":{"groupId":"-1001234567890","groupName":"Gaming Group","channels":[{"id":"-1001234567890","name":"main-chat","type":"group"}]}}]}
+```
+
+### Troubleshooting
+
+1. **Invalid JSON Error**:
+   - Make sure there are no line breaks in the environment variable
+   - Verify all quotes are properly escaped
+   - Use the management script to generate the correct format
+
+2. **Mappings Not Working**:
+   - Check the Render logs for any JSON parsing errors
+   - Verify the environment variable is saved properly
+   - Make sure you've redeployed after changes
+
+3. **Changes Not Taking Effect**:
+   - Remember to redeploy your service after updating the environment variable
+   - Check the logs to ensure the new configuration is loaded
+
+### Security Notes
+
+The environment variable approach is more secure because:
+1. Configuration is stored in Render's encrypted environment
+2. No sensitive data in files
+3. Access controlled through Render's dashboard
+4. Changes are logged and tracked
+
+### Backup and Recovery
+
+The management script automatically creates backups:
+- Located in `config/mappings-[timestamp].txt`
+- Contains full mapping configuration
+- Can be used to restore if needed
+
+To restore from backup:
+1. Find the backup file in `config/`
+2. Copy its contents
+3. Update the environment variable in Render
+4. Redeploy your service 

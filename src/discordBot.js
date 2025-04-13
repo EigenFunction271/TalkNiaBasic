@@ -14,10 +14,8 @@ async function startDiscordBot(relay) {
     });
 
     client.on('messageCreate', async (message) => {
-        // Ignore bot messages and messages from other channels
+        // Ignore bot messages
         if (message.author.bot) return;
-        if (message.channelId !== process.env.DISCORD_CHANNEL_ID) return;
-
         await relay.relayToTelegram(message);
     });
 
