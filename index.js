@@ -170,6 +170,7 @@ app.post('/mappings/channels', async (req, res) => {
 });
 
 let discordBot = null;
+let telegramBot = null;
 
 // Start Express server first
 const server = app.listen(port, () => {
@@ -182,22 +183,43 @@ const server = app.listen(port, () => {
 });
 
 async function startBridge() {
-    try {
-        const relay = initializeRelay();
-        discordBot = await startDiscordBot(relay);
-        const telegramBot = await startTelegramBot(relay);
-        console.log('Messenger Bridge is running!');
-    } catch (error) {
-        console.error('Failed to start Messenger Bridge:', error);
-        process.exit(1);
+    let retries = 3;
+    while (retries > 0) {
+        try {
+            const relay = initializeRelay();
+            discordBot = await startDiscordBot(relay);
+            telegramBot = await startTelegramBot(relay);
+            console.log('Messenger Bridge is running!');
+            return;
+        } catch (error) {
+            retries--;
+            if (retries === 0) {
+                console.error('Failed to start Messenger Bridge after 3 attempts:', error);
+                process.exit(1);
+            }
+            console.log(`Retrying in 5 seconds... (${retries} attempts remaining)`);
+            await new Promise(resolve => setTimeout(resolve, 5000));
+        }
     }
 }
 
 // Handle graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received. Shutting down gracefully...');
-  server.close(() => {
-    console.log('HTTP server closed');
-    process.exit(0);
-  });
+process.on('SIGTERM', async () => {
+    console.log('SIGTERM received. Shutting down gracefully...');
+    
+    // Stop telegram bot if it exists
+    if (telegramBot) {
+        try {
+            await telegramBot.stop();
+            console.log('Telegram bot stopped');
+        } catch (error) {
+            console.error('Error stopping Telegram bot:', error);
+        }
+    }
+
+    // Close the server
+    server.close(() => {
+        console.log('HTTP server closed');
+        process.exit(0);
+    });
 }); 
