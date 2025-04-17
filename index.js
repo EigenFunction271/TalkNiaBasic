@@ -222,4 +222,25 @@ process.on('SIGTERM', async () => {
         console.log('HTTP server closed');
         process.exit(0);
     });
+});
+
+// In index.js, add this endpoint
+app.get('/debug', (req, res) => {
+  res.json({
+    status: {
+      discord: {
+        connected: discordBot?.isReady() ?? false,
+        username: discordBot?.user?.tag,
+        guilds: discordBot?.guilds?.cache?.size
+      },
+      telegram: {
+        connected: telegramBot !== null,
+        info: telegramBot ? 'Connected' : 'Not connected'
+      },
+      mappings: {
+        count: relay?.mappings?.length ?? 0,
+        current: relay?.mappings
+      }
+    }
+  });
 }); 

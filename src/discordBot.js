@@ -17,14 +17,23 @@ async function startDiscordBot(relay) {
         try {
             client.on('messageCreate', async message => {
                 if (message.author.bot) return;
-                console.log('Discord message received:', {
+                
+                // Log every message attempt
+                console.log('[Discord] Message received:', {
+                    timestamp: new Date().toISOString(),
                     author: message.author.tag,
                     channel: message.channel.name,
                     channelId: message.channelId,
                     guildId: message.guildId,
-                    content: message.content
+                    content: message.content,
+                    guild: message.guild.name
                 });
-                await relay.relayToTelegram(message);
+
+                try {
+                    await relay.relayToTelegram(message);
+                } catch (error) {
+                    console.error('[Discord] Failed to relay message:', error);
+                }
             });
 
             client.on('error', async (error) => {
