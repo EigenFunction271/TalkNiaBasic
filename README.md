@@ -824,3 +824,43 @@ To restore from backup:
 2. Copy its contents
 3. Update the environment variable in Render
 4. Redeploy your service 
+
+## Deployment Cleanup
+
+To clean up old deployments on Render:
+
+1. Get your Render API key:
+   - Go to your Render dashboard
+   - Click on your profile icon → Account Settings
+   - Go to API Keys
+   - Create a new API key
+
+2. Get your service ID:
+   - Go to your service dashboard
+   - The service ID is in the URL: `https://dashboard.render.com/web/srv-XXXXX`
+   - Copy the `srv-XXXXX` part
+
+3. Set up environment variables:
+   ```bash
+   export RENDER_API_KEY=your_api_key
+   export RENDER_SERVICE_ID=srv-XXXXX
+   ```
+
+4. Run the cleanup script:
+   ```bash
+   npm run cleanup
+   ```
+
+The script will:
+- List all deployments
+- Identify active deployments
+- Keep the most recent active deployment
+- Terminate any other active deployments
+- Log the cleanup process
+
+You can also add these environment variables to your Render service to run cleanup automatically:
+1. Go to your service dashboard
+2. Click "Environment"
+3. Add the variables:
+   - `RENDER_API_KEY`
+   - `RENDER_SERVICE_ID` 

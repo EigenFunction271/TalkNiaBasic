@@ -8,6 +8,16 @@ async function startTelegramBot(relay) {
 
     async function connect() {
         try {
+            // First, try to stop any existing webhook
+            try {
+                console.log('Removing existing webhook...');
+                await bot.api.deleteWebhook({ drop_pending_updates: true });
+                // Wait a moment to ensure webhook is fully removed
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            } catch (error) {
+                console.log('No existing webhook to remove:', error.message);
+            }
+
             bot.on('message', async (ctx) => {
                 try {
                     console.log('Telegram message received:', {
@@ -25,21 +35,23 @@ async function startTelegramBot(relay) {
             // Handle connection errors
             bot.catch(async (err) => {
                 console.error('Telegram bot error:', err);
-                
-                if (err.message.includes('restart') || err.message.includes('connection')) {
+                if (err.message.includes('restart') || err.message.includes('connection') || err.error_code === 409) {
                     await handleReconnect();
                 }
             });
 
             console.log('Telegram bot starting...');
             relay.setTelegramBot(bot);
-            
-            await bot.api.deleteWebhook();
+
+            // Start the bot with specific options
             await bot.start({
                 drop_pending_updates: true,
+                allowed_updates: ["message"],
+                timeout: parseInt(process.env.TELEGRAM_POLLING_TIMEOUT || "30"),
+                limit: parseInt(process.env.TELEGRAM_POLLING_LIMIT || "100"),
                 onStart: () => {
                     console.log('Telegram bot successfully started');
-                    reconnectAttempts = 0; // Reset counter on successful connection
+                    reconnectAttempts = 0;
                 }
             });
 
@@ -55,6 +67,7 @@ async function startTelegramBot(relay) {
 
             return bot;
         } catch (error) {
+            console.error('Error in connect():', error);
             throw error;
         }
     }

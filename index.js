@@ -243,4 +243,35 @@ app.get('/debug', (req, res) => {
       }
     }
   });
+});
+
+// Add to your existing startup code
+if (process.env.RENDER_API_KEY && process.env.RENDER_SERVICE_ID) {
+    const cleanup = require('./scripts/cleanup-deployment');
+    cleanup().catch(error => {
+        console.error('Deployment cleanup failed:', error);
+        // Continue starting the app even if cleanup fails
+    });
+}
+
+// Add this near the top of the file with other imports
+const cleanup = async () => {
+    if (telegramBot) {
+        try {
+            console.log('Stopping Telegram bot...');
+            await telegramBot.stop();
+            console.log('Telegram bot stopped');
+        } catch (error) {
+            console.error('Error stopping Telegram bot:', error);
+        }
+    }
+};
+
+// Add these process handlers
+process.on('SIGINT', cleanup);
+process.on('SIGTERM', cleanup);
+process.on('uncaughtException', async (error) => {
+    console.error('Uncaught exception:', error);
+    await cleanup();
+    process.exit(1);
 }); 

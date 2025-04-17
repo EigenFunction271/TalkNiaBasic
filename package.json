@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
-    "manage-mappings": "node scripts/manage-mappings.js"
+    "manage-mappings": "node scripts/manage-mappings.js",
+    "cleanup": "node scripts/cleanup-deployment.js"
   },
   "dependencies": {
     "discord.js": "^14.11.0",
