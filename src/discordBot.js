@@ -17,6 +17,13 @@ async function startDiscordBot(relay) {
         try {
             client.on('messageCreate', async message => {
                 if (message.author.bot) return;
+                console.log('Discord message received:', {
+                    author: message.author.tag,
+                    channel: message.channel.name,
+                    channelId: message.channelId,
+                    guildId: message.guildId,
+                    content: message.content
+                });
                 await relay.relayToTelegram(message);
             });
 

@@ -25,6 +25,12 @@ class MessageRelay {
         try {
             if (!this.telegramBot) throw new Error('Telegram bot not initialized');
             
+            console.log('Attempting to relay to Telegram:', {
+                guildId: message.guildId,
+                channelId: message.channelId,
+                channelName: message.channel.name
+            });
+
             // Find mapping based on Discord server and channel
             const mapping = this.mappings.find(m => 
                 m.discord.serverId === message.guildId &&
@@ -34,7 +40,17 @@ class MessageRelay {
                 )
             );
 
-            if (!mapping) return; // Skip if no mapping found
+            if (!mapping) {
+                console.log('No mapping found for Discord message:', {
+                    guildId: message.guildId,
+                    channelId: message.channelId,
+                    availableMappings: this.mappings.map(m => ({
+                        serverId: m.discord.serverId,
+                        channels: m.discord.channels
+                    }))
+                });
+                return;
+            }
 
             // Find the corresponding Telegram chat
             const discordChannel = mapping.discord.channels.find(ch => 
@@ -45,9 +61,20 @@ class MessageRelay {
                 ch.name === discordChannel.mappedTo
             );
 
-            if (!telegramChat) return;
+            if (!telegramChat) {
+                console.log('No matching Telegram chat found:', {
+                    discordChannel,
+                    availableTelegramChannels: mapping.telegram.channels
+                });
+                return;
+            }
 
-            const formattedMessage = `Discord | ${message.author}: ${message.content}`;
+            console.log('Sending to Telegram:', {
+                chatId: telegramChat.id,
+                message: `Discord | ${message.author.tag}: ${message.content}`
+            });
+
+            const formattedMessage = `Discord | ${message.author.tag}: ${message.content}`;
             await this.telegramBot.api.sendMessage(telegramChat.id, formattedMessage);
         } catch (error) {
             console.error('Failed to relay message to Telegram:', error);
@@ -58,6 +85,11 @@ class MessageRelay {
         try {
             if (!this.discordBot) throw new Error('Discord bot not initialized');
             
+            console.log('Attempting to relay to Discord:', {
+                chatId: message.chat.id,
+                messageType: message.chat.type
+            });
+
             // Find mapping based on Telegram group ID
             const mapping = this.mappings.find(m => 
                 m.telegram.groupId === message.chat.id.toString() &&
@@ -65,7 +97,13 @@ class MessageRelay {
             );
 
             if (!mapping) {
-                console.log(`No mapping found for Telegram group ${message.chat.id}`);
+                console.log('No mapping found for Telegram message:', {
+                    chatId: message.chat.id,
+                    availableMappings: this.mappings.map(m => ({
+                        groupId: m.telegram.groupId,
+                        channels: m.telegram.channels
+                    }))
+                });
                 return;
             }
 
@@ -75,7 +113,10 @@ class MessageRelay {
             );
             
             if (!telegramChannel) {
-                console.log(`No telegram channel configuration found for ${message.chat.id}`);
+                console.log('No telegram channel configuration found:', {
+                    chatId: message.chat.id,
+                    availableChannels: mapping.telegram.channels
+                });
                 return;
             }
 
@@ -84,16 +125,22 @@ class MessageRelay {
             );
 
             if (!discordChannel) {
-                console.log(`No mapped Discord channel found for Telegram channel ${telegramChannel.name}`);
+                console.log('No mapped Discord channel found:', {
+                    telegramChannel,
+                    availableDiscordChannels: mapping.discord.channels
+                });
                 return;
             }
 
-            const formattedMessage = `Telegram | ${message.from.username || message.from.first_name}: ${message.text}`;
+            console.log('Sending to Discord:', {
+                channelId: discordChannel.id,
+                message: `Telegram | ${message.from.username || message.from.first_name}: ${message.text}`
+            });
+
             const channel = await this.discordBot.channels.fetch(discordChannel.id);
-            await channel.send(formattedMessage);
+            await channel.send(`Telegram | ${message.from.username || message.from.first_name}: ${message.text}`);
         } catch (error) {
             console.error('Failed to relay message to Discord:', error);
-            // Add more detailed error logging
             if (error.code === 50035) {
                 console.error('Channel ID lookup failed. Current mapping:', this.mappings);
             }

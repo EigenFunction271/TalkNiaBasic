@@ -10,6 +10,12 @@ async function startTelegramBot(relay) {
         try {
             bot.on('message', async (ctx) => {
                 try {
+                    console.log('Telegram message received:', {
+                        from: ctx.message.from.username,
+                        chatId: ctx.message.chat.id,
+                        chatType: ctx.message.chat.type,
+                        text: ctx.message.text
+                    });
                     await relay.relayToDiscord(ctx.message);
                 } catch (error) {
                     console.error('Error handling Telegram message:', error);
