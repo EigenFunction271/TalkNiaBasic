@@ -99,24 +99,111 @@ class MessageRelay {
             }
         }
     }
+
+    validateMappings() {
+        if (!Array.isArray(this.mappings)) {
+            throw new Error('Mappings must be an array');
+        }
+
+        this.mappings.forEach((mapping, index) => {
+            // Validate basic structure
+            if (!mapping.name) {
+                throw new Error(`Mapping at index ${index} missing name`);
+            }
+            if (!mapping.discord) {
+                throw new Error(`Mapping "${mapping.name}" missing discord configuration`);
+            }
+            if (!mapping.telegram) {
+                throw new Error(`Mapping "${mapping.name}" missing telegram configuration`);
+            }
+
+            // Validate Discord config
+            if (!mapping.discord.serverId) {
+                throw new Error(`Mapping "${mapping.name}" missing discord.serverId`);
+            }
+            if (!Array.isArray(mapping.discord.channels)) {
+                throw new Error(`Mapping "${mapping.name}" discord.channels must be an array`);
+            }
+
+            // Validate Discord channels
+            mapping.discord.channels.forEach((channel, channelIndex) => {
+                if (!channel.id) {
+                    throw new Error(`Mapping "${mapping.name}" discord channel ${channelIndex} missing id`);
+                }
+                if (!channel.name) {
+                    throw new Error(`Mapping "${mapping.name}" discord channel ${channelIndex} missing name`);
+                }
+                if (!channel.mappedTo) {
+                    throw new Error(`Mapping "${mapping.name}" discord channel ${channelIndex} missing mappedTo`);
+                }
+            });
+
+            // Validate Telegram config
+            if (!mapping.telegram.groupId) {
+                throw new Error(`Mapping "${mapping.name}" missing telegram.groupId`);
+            }
+            if (!Array.isArray(mapping.telegram.channels)) {
+                throw new Error(`Mapping "${mapping.name}" telegram.channels must be an array`);
+            }
+
+            // Validate Telegram channels
+            mapping.telegram.channels.forEach((channel, channelIndex) => {
+                if (!channel.id) {
+                    throw new Error(`Mapping "${mapping.name}" telegram channel ${channelIndex} missing id`);
+                }
+                if (!channel.name) {
+                    throw new Error(`Mapping "${mapping.name}" telegram channel ${channelIndex} missing name`);
+                }
+                if (!channel.type) {
+                    throw new Error(`Mapping "${mapping.name}" telegram channel ${channelIndex} missing type`);
+                }
+            });
+
+            // Validate mappings match
+            const discordMappedTo = mapping.discord.channels.map(ch => ch.mappedTo);
+            const telegramNames = mapping.telegram.channels.map(ch => ch.name);
+            
+            discordMappedTo.forEach(mappedName => {
+                if (!telegramNames.includes(mappedName)) {
+                    throw new Error(`Mapping "${mapping.name}" discord mappedTo "${mappedName}" has no matching telegram channel`);
+                }
+            });
+        });
+
+        console.log('Channel mappings validation successful');
+        console.log('Current mappings:', JSON.stringify(this.mappings, null, 2));
+    }
 }
 
 function initializeRelay() {
     try {
+        let relay;
         // First try to read from file
         try {
             const bridges = require('../config/channels.json').bridges;
-            return new MessageRelay(bridges);
+            relay = new MessageRelay(bridges);
         } catch (error) {
             // If file doesn't exist, try environment variable
             if (process.env.CHANNEL_MAPPINGS) {
                 const bridges = JSON.parse(process.env.CHANNEL_MAPPINGS).bridges;
-                return new MessageRelay(bridges);
+                relay = new MessageRelay(bridges);
+            } else {
+                console.error('Error loading channel configuration:', error);
+                console.log('Please either create config/channels.json or set CHANNEL_MAPPINGS environment variable');
+                process.exit(1);
             }
-            console.error('Error loading channel configuration:', error);
-            console.log('Please either create config/channels.json or set CHANNEL_MAPPINGS environment variable');
+        }
+
+        // Validate mappings after initialization
+        try {
+            relay.validateMappings();
+        } catch (error) {
+            console.error('Mapping validation failed:', error.message);
+            console.error('Please check your channel mappings configuration');
             process.exit(1);
         }
+
+        return relay;
     } catch (error) {
         console.error('Error initializing relay:', error);
         process.exit(1);
