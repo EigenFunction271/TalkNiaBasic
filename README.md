@@ -83,77 +83,164 @@ Create `config/mappings.json`:
 
 ## Channel Mapping Setup
 
-### 1. Gather Required IDs
+### 1. Gathering Required IDs
 
-1. **Discord IDs**:
-   - Enable Developer Mode in Discord Settings → App Settings → Advanced
-   - Get Server ID: Right-click server → Copy Server ID
-   - Get Channel IDs: Right-click each channel → Copy ID
-   - Note down channel names exactly as they appear
+#### Discord IDs
+1. **Enable Developer Mode**:
+   - Open Discord
+   - Go to Settings → App Settings → Advanced
+   - Toggle ON "Developer Mode"
 
-2. **Telegram IDs**:
-   - Add bot to your group
-   - Send a message in each relevant chat
-   - Visit: `https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates`
-   - Find:
-     - Group ID: "chat": {"id": -XXXXXX}
-     - Individual chat IDs if using multiple chats
+2. **Get Server ID**:
+   - Right-click your server name
+   - Click "Copy Server ID"
+   - Save this ID - it's your `serverId`
 
-### 2. Create Channel Mapping
+3. **Get Channel IDs**:
+   - Right-click the channel you want to bridge
+   - Click "Copy Channel ID"
+   - Save this ID - it's your `channelId`
+   - Note: Write down the exact channel name as it appears in Discord
 
-Use the `/mappings/channels` endpoint to create a mapping:
+#### Telegram IDs
+1. **Get Group ID**:
+   - Add your bot to the Telegram group
+   - Send any message in the group
+   - Visit: `https://api.telegram.org/bot[YOUR_BOT_TOKEN]/getUpdates`
+   - Replace [YOUR_BOT_TOKEN] with your actual bot token
+   - Look for: `"chat":{"id": -XXXXXXXXXX}`
+   - Save this number (including the minus sign) - it's your `groupId`
 
-```bash
-curl -X POST http://your-render-url/mappings/channels \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Community Bridge",
-    "discord": {
-      "serverId": "123456789",
-      "serverName": "My Discord Server",
-      "channels": [
-        {
-          "id": "111111",
-          "name": "general",
-          "mappedTo": "main-chat"
-        },
-        {
-          "id": "222222",
-          "name": "announcements",
-          "mappedTo": "announcements"
-        }
-      ]
-    },
-    "telegram": {
-      "groupId": "-987654321",
-      "groupName": "My Telegram Group",
-      "channels": [
-        {
-          "id": "-111111",
-          "name": "main-chat",
-          "type": "group"
-        },
-        {
-          "id": "-222222",
-          "name": "announcements",
-          "type": "channel"
-        }
-      ]
+### 2. Creating the Channel Mappings
+
+Create a JSON structure with your gathered IDs. Here's a template with real examples:
+
+```json
+{
+  "bridges": [
+    {
+      "name": "Main Bridge",
+      "discord": {
+        "serverId": "1250317952612565050",
+        "serverName": "Your Server Name",
+        "channels": [
+          {
+            "id": "1250317952612565050",
+            "name": "general",
+            "mappedTo": "main-chat"
+          }
+        ]
+      },
+      "telegram": {
+        "groupId": "-1002231684175",
+        "groupName": "Your Group Name",
+        "channels": [
+          {
+            "id": "-1002231684175",
+            "name": "main-chat",
+            "type": "group"
+          }
+        ]
+      }
     }
-  }'
+  ]
+}
 ```
 
-### 3. Managing Mappings
+### 3. Adding the Mapping to Render
 
-1. **View all mappings**:
-```bash
-curl http://your-render-url/mappings
+1. **Format the JSON**:
+   - Copy your JSON structure
+   - Remove all line breaks and extra spaces
+   - It should be a single line
+
+2. **Add to Render**:
+   - Go to your service in Render Dashboard
+   - Click "Environment"
+   - Add new variable:
+     - Key: `CHANNEL_MAPPINGS`
+     - Value: Your single-line JSON
+
+Example single-line format:
+```json
+{"bridges":[{"name":"Main Bridge","discord":{"serverId":"1250317952612565050","serverName":"Your Server Name","channels":[{"id":"1250317952612565050","name":"general","mappedTo":"main-chat"}]},"telegram":{"groupId":"-1002231684175","groupName":"Your Group Name","channels":[{"id":"-1002231684175","name":"main-chat","type":"group"}]}}]}
 ```
 
-2. **Delete a mapping**:
-```bash
-curl -X DELETE http://your-render-url/mappings/Community%20Bridge
-```
+### 4. Verifying the Setup
+
+1. **Check Render Logs**:
+   - Go to your service dashboard
+   - Click "Logs"
+   - Look for "Messenger Bridge is running!"
+   - There should be no errors about channel configuration
+
+2. **Test the Bridge**:
+   - Send a message in your Discord channel
+   - It should appear in the Telegram group
+   - Send a message in the Telegram group
+   - It should appear in the Discord channel
+
+### 5. Adding More Channels
+
+To add more channels to an existing bridge:
+
+1. **Add New Discord Channel**:
+   - Get the new channel's ID
+   - Add to the `channels` array in Discord section:
+   ```json
+   "channels": [
+     {
+       "id": "1250317952612565050",
+       "name": "general",
+       "mappedTo": "main-chat"
+     },
+     {
+       "id": "NEW_CHANNEL_ID",
+       "name": "announcements",
+       "mappedTo": "announcements"
+     }
+   ]
+   ```
+
+2. **Add New Telegram Group**:
+   - Get the new group's ID
+   - Add to the `channels` array in Telegram section:
+   ```json
+   "channels": [
+     {
+       "id": "-1002231684175",
+       "name": "main-chat",
+       "type": "group"
+     },
+     {
+       "id": "NEW_GROUP_ID",
+       "name": "announcements",
+       "type": "group"
+     }
+   ]
+   ```
+
+3. **Update Render**:
+   - Format the new JSON as a single line
+   - Update the `CHANNEL_MAPPINGS` environment variable
+   - Redeploy your service
+
+### 6. Troubleshooting
+
+1. **Messages Not Being Relayed**:
+   - Verify all IDs are correct
+   - Check channel names match exactly
+   - Ensure `mappedTo` values correspond correctly
+   - Confirm bot has proper permissions in both platforms
+
+2. **JSON Errors**:
+   - Validate your JSON structure at [jsonlint.com](https://jsonlint.com)
+   - Ensure all IDs are strings (wrapped in quotes)
+   - Check for missing commas or brackets
+
+3. **Bot Access Issues**:
+   - Discord: Ensure bot has "View Channel" and "Send Messages" permissions
+   - Telegram: Verify bot is admin in the group with message permissions
 
 ## Deployment on Render
 

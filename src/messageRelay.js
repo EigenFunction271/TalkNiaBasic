@@ -58,14 +58,45 @@ class MessageRelay {
         try {
             if (!this.discordBot) throw new Error('Discord bot not initialized');
             
-            const mapping = this.findTelegramMapping(message.chat.id);
-            if (!mapping) return; // Skip if no mapping found
+            // Find mapping based on Telegram group ID
+            const mapping = this.mappings.find(m => 
+                m.telegram.groupId === message.chat.id.toString() &&
+                m.telegram.channels.some(ch => ch.id === message.chat.id.toString())
+            );
+
+            if (!mapping) {
+                console.log(`No mapping found for Telegram group ${message.chat.id}`);
+                return;
+            }
+
+            // Find the corresponding Discord channel
+            const telegramChannel = mapping.telegram.channels.find(ch => 
+                ch.id === message.chat.id.toString()
+            );
+            
+            if (!telegramChannel) {
+                console.log(`No telegram channel configuration found for ${message.chat.id}`);
+                return;
+            }
+
+            const discordChannel = mapping.discord.channels.find(ch =>
+                ch.mappedTo === telegramChannel.name
+            );
+
+            if (!discordChannel) {
+                console.log(`No mapped Discord channel found for Telegram channel ${telegramChannel.name}`);
+                return;
+            }
 
             const formattedMessage = `Telegram | ${message.from.username || message.from.first_name}: ${message.text}`;
-            const channel = await this.discordBot.channels.fetch(mapping.discord.channelId);
+            const channel = await this.discordBot.channels.fetch(discordChannel.id);
             await channel.send(formattedMessage);
         } catch (error) {
             console.error('Failed to relay message to Discord:', error);
+            // Add more detailed error logging
+            if (error.code === 50035) {
+                console.error('Channel ID lookup failed. Current mapping:', this.mappings);
+            }
         }
     }
 }

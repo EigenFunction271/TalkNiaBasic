@@ -1,0 +1,1 @@
+{"bridges":[{"name":"General Chat Bridge","discord":{"serverId":"YOUR_DISCORD_SERVER_ID","serverName":"Your Server Name","channels":[{"id":"YOUR_DISCORD_CHANNEL_ID","name":"general","mappedTo":"main-chat"}]},"telegram":{"groupId":"YOUR_TELEGRAM_GROUP_ID","groupName":"Your Telegram Group","channels":[{"id":"YOUR_TELEGRAM_CHAT_ID","name":"main-chat","type":"group"}]}}]}
