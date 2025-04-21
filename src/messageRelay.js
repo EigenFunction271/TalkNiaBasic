@@ -1,3 +1,6 @@
+const DISCORD_EMOJI = '<:discord_logo:YOUR_EMOJI_ID>';  // Replace with your emoji ID
+const TELEGRAM_EMOJI = '<:telegram_logo:YOUR_EMOJI_ID>';  // Replace with your emoji ID
+
 class MessageRelay {
     constructor(mappings) {
         this.discordBot = null;
@@ -71,10 +74,10 @@ class MessageRelay {
 
             console.log('Sending to Telegram:', {
                 chatId: telegramChat.id,
-                message: `Discord | ${message.author.tag}: ${message.content}`
+                message: `[DS] | ${message.author.tag}: ${message.content}`
             });
 
-            const formattedMessage = `Discord | ${message.author.tag}: ${message.content}`;
+            const formattedMessage = `[DS] | ${message.author.tag}: ${message.content}`;
             await this.telegramBot.api.sendMessage(telegramChat.id, formattedMessage);
         } catch (error) {
             console.error('Failed to relay message to Telegram:', error);
@@ -134,11 +137,11 @@ class MessageRelay {
 
             console.log('Sending to Discord:', {
                 channelId: discordChannel.id,
-                message: `Telegram | ${message.from.username || message.from.first_name}: ${message.text}`
+                message: `[TG] | ${message.from.username || message.from.first_name}: ${message.text}`
             });
 
             const channel = await this.discordBot.channels.fetch(discordChannel.id);
-            await channel.send(`Telegram | ${message.from.username || message.from.first_name}: ${message.text}`);
+            await channel.send(`[TG] | ${message.from.username || message.from.first_name}: ${message.text}`);
         } catch (error) {
             console.error('Failed to relay message to Discord:', error);
             if (error.code === 50035) {

@@ -5,6 +5,7 @@ const { startTelegramBot } = require('./src/telegramBot');
 const { initializeRelay } = require('./src/messageRelay');
 const fs = require('fs').promises;
 const path = require('path');
+const fetch = require('node-fetch');
 
 // Create Express app
 const app = express();
@@ -180,6 +181,21 @@ const server = app.listen(port, () => {
     console.error('Failed to start bridge:', error);
     process.exit(1);
   });
+
+  // Add the keep-alive ping
+  const startKeepAlive = () => {
+    const interval = 600000; // 10 minutes
+    setInterval(async () => {
+      try {
+        const response = await fetch(`http://localhost:${port}/health`);
+        console.log('Keep-alive ping sent:', new Date().toISOString());
+      } catch (error) {
+        console.error('Keep-alive ping failed:', error.message);
+      }
+    }, interval);
+  };
+
+  startKeepAlive();
 });
 
 async function startBridge() {
