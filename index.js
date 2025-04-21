@@ -185,12 +185,14 @@ const server = app.listen(port, () => {
   // Add the keep-alive ping
   const startKeepAlive = () => {
     const interval = 600000; // 10 minutes
+    const publicUrl = process.env.RENDER_EXTERNAL_URL || `https://${process.env.RENDER_SERVICE_NAME}.onrender.com`;
+    
     setInterval(async () => {
       try {
-        const response = await fetch(`http://localhost:${port}/health`);
-        console.log('Keep-alive ping sent:', new Date().toISOString());
+        const response = await fetch(`${publicUrl}/health`);
+        console.log('Keep-alive ping sent:', new Date().toISOString(), 'to', publicUrl);
       } catch (error) {
-        console.error('Keep-alive ping failed:', error.message);
+        console.error('Keep-alive ping failed:', error.message, 'URL:', publicUrl);
       }
     }, interval);
   };

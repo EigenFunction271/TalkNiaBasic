@@ -864,3 +864,330 @@ You can also add these environment variables to your Render service to run clean
 3. Add the variables:
    - `RENDER_API_KEY`
    - `RENDER_SERVICE_ID` 
+
+## Multiple Server Setup
+
+The bot supports multiple servers and many-to-many connections between Discord and Telegram. Each bridge can contain:
+- Multiple Discord channels from different servers
+- Multiple Telegram groups/channels
+- Complex mappings between them
+
+### Example Configurations
+
+1. **Basic Multi-Server Setup**:
+```json
+{
+  "bridges": [
+    {
+      "name": "Gaming Bridge",
+      "discord": {
+        "serverId": "123456789012345678",
+        "serverName": "Gaming Server",
+        "channels": [
+          {
+            "id": "123456789012345678",
+            "name": "announcements",
+            "mappedTo": "gaming-announcements"
+          },
+          {
+            "id": "123456789012345679",
+            "name": "general",
+            "mappedTo": "gaming-general"
+          }
+        ]
+      },
+      "telegram": {
+        "groupId": "-1001234567890",
+        "groupName": "Gaming Community",
+        "channels": [
+          {
+            "id": "-1001234567890",
+            "name": "gaming-announcements",
+            "type": "group"
+          },
+          {
+            "id": "-1001234567891",
+            "name": "gaming-general",
+            "type": "group"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Study Bridge",
+      "discord": {
+        "serverId": "987654321098765432",
+        "serverName": "Study Server",
+        "channels": [
+          {
+            "id": "987654321098765432",
+            "name": "homework",
+            "mappedTo": "study-help"
+          }
+        ]
+      },
+      "telegram": {
+        "groupId": "-1009876543210",
+        "groupName": "Study Group",
+        "channels": [
+          {
+            "id": "-1009876543210",
+            "name": "study-help",
+            "type": "group"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+2. **Many-to-Many Setup**:
+```json
+{
+  "bridges": [
+    {
+      "name": "Community Hub",
+      "discord": {
+        "serverId": "111222333444555666",
+        "serverName": "Main Community",
+        "channels": [
+          {
+            "id": "111222333444555666",
+            "name": "announcements",
+            "mappedTo": "all-announcements"
+          },
+          {
+            "id": "111222333444555667",
+            "name": "general",
+            "mappedTo": "main-chat"
+          }
+        ]
+      },
+      "telegram": {
+        "groupId": "-1001112223334",
+        "groupName": "Community Groups",
+        "channels": [
+          {
+            "id": "-1001112223334",
+            "name": "all-announcements",
+            "type": "group"
+          },
+          {
+            "id": "-1001112223335",
+            "name": "main-chat",
+            "type": "group"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+### How Mappings Work
+
+1. **Channel Matching**:
+   - Each Discord channel has a `mappedTo` field
+   - This matches with a Telegram channel's `name` field
+   - Messages are relayed between matched channels
+
+2. **Multiple Servers**:
+   - Each bridge can have its own Discord server
+   - Use different `serverId` values for each server
+   - Keep channel names unique within each bridge
+
+3. **Validation**:
+   - The bot validates all mappings on startup
+   - Ensures all `mappedTo` values have matching channels
+   - Checks for required fields and correct format
+
+### Testing Your Setup
+
+1. **Check Mappings**:
+   ```bash
+   curl http://your-bot-url/mappings
+   ```
+   This shows all active mappings.
+
+2. **Debug Endpoint**:
+   ```bash
+   curl http://your-bot-url/debug
+   ```
+   Shows connection status and current mappings.
+
+3. **Send Test Messages**:
+   - Send a message in each Discord channel
+   - Check corresponding Telegram groups
+   - Send messages in Telegram groups
+   - Verify they appear in Discord
+
+### Troubleshooting Multiple Servers
+
+1. **No Message Relay**:
+   - Verify server IDs are correct
+   - Check channel names match exactly
+   - Ensure `mappedTo` values correspond to Telegram channel names
+
+2. **Wrong Channel Delivery**:
+   - Double-check `mappedTo` values
+   - Verify channel IDs
+   - Check for duplicate channel names
+
+3. **Missing Messages**:
+   - Ensure bot has permissions in all servers
+   - Verify bot is member of all Telegram groups
+   - Check server and channel IDs are strings (in quotes) 
+
+### Adding New Mappings to Existing Setup
+
+You can add new mappings to your existing configuration in several ways:
+
+1. **Using Environment Variables (Recommended for Render)**:
+   1. Get your current mappings:
+      ```bash
+      curl http://your-bot-url/mappings
+      ```
+   2. Copy the existing `CHANNEL_MAPPINGS` from Render dashboard
+   3. Add new bridge to the JSON structure:
+      ```json
+      {
+        "bridges": [
+          // ... existing bridges ...
+          {
+            "name": "New Bridge",
+            "discord": {
+              "serverId": "YOUR_NEW_SERVER_ID",
+              "serverName": "New Server",
+              "channels": [
+                {
+                  "id": "NEW_CHANNEL_ID",
+                  "name": "new-channel",
+                  "mappedTo": "new-chat"
+                }
+              ]
+            },
+            "telegram": {
+              "groupId": "NEW_GROUP_ID",
+              "groupName": "New Group",
+              "channels": [
+                {
+                  "id": "NEW_GROUP_ID",
+                  "name": "new-chat",
+                  "type": "group"
+                }
+              ]
+            }
+          }
+        ]
+      }
+      ```
+   4. Convert to single line (remove all line breaks)
+   5. Update `CHANNEL_MAPPINGS` in Render dashboard
+   6. Redeploy your service
+
+2. **Adding to Existing Bridge**:
+   ```json
+   {
+     "bridges": [
+       {
+         "name": "Existing Bridge",
+         "discord": {
+           "serverId": "EXISTING_SERVER_ID",
+           "serverName": "Existing Server",
+           "channels": [
+             // ... existing channels ...
+             {
+               "id": "NEW_CHANNEL_ID",
+               "name": "another-channel",
+               "mappedTo": "another-chat"
+             }
+           ]
+         },
+         "telegram": {
+           "groupId": "EXISTING_GROUP_ID",
+           "groupName": "Existing Group",
+           "channels": [
+             // ... existing channels ...
+             {
+               "id": "NEW_CHAT_ID",
+               "name": "another-chat",
+               "type": "group"
+             }
+           ]
+         }
+       }
+     ]
+   }
+   ```
+
+3. **Using the API Endpoint**:
+   ```bash
+   curl -X POST http://your-bot-url/mappings/channels \
+     -H "Content-Type: application/json" \
+     -d '{
+       "name": "New Bridge",
+       "discord": {
+         "serverId": "YOUR_NEW_SERVER_ID",
+         "serverName": "New Server",
+         "channels": [
+           {
+             "id": "NEW_CHANNEL_ID",
+             "name": "new-channel",
+             "mappedTo": "new-chat"
+           }
+         ]
+       },
+       "telegram": {
+         "groupId": "NEW_GROUP_ID",
+         "groupName": "New Group",
+         "channels": [
+           {
+             "id": "NEW_GROUP_ID",
+             "name": "new-chat",
+             "type": "group"
+           }
+         ]
+       }
+     }'
+   ```
+
+### Validation Steps After Adding Mappings
+
+1. **Check Configuration**:
+   ```bash
+   curl http://your-bot-url/debug
+   ```
+   Verify new mappings appear in the response.
+
+2. **Test New Channels**:
+   - Send test message in new Discord channel
+   - Send test message in new Telegram group
+   - Verify messages appear in both directions
+
+3. **Check Logs**:
+   - Monitor Render logs for any validation errors
+   - Look for successful relay messages
+   - Verify channel IDs and names match
+
+### Common Issues When Adding Mappings
+
+1. **Invalid JSON Structure**:
+   - Use a JSON validator to check format
+   - Ensure all IDs are strings (in quotes)
+   - Check for missing commas or brackets
+
+2. **Duplicate Names/IDs**:
+   - Each bridge name must be unique
+   - Channel IDs must be unique within a bridge
+   - `mappedTo` values must match exactly
+
+3. **Permission Issues**:
+   - Ensure bot has access to new channels
+   - Verify bot is admin in new Telegram groups
+   - Check Discord channel permissions
+
+4. **Changes Not Taking Effect**:
+   - Clear Render build cache
+   - Force redeploy after changes
+   - Check logs for validation errors 
