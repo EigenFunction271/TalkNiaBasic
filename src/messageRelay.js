@@ -1,5 +1,5 @@
-const DISCORD_EMOJI = '<:discord_logo:YOUR_EMOJI_ID>';  // Replace with your emoji ID
-const TELEGRAM_EMOJI = '<:telegram_logo:YOUR_EMOJI_ID>';  // Replace with your emoji ID
+const DISCORD_EMOJI = '💬';  // Discord icon
+const TELEGRAM_EMOJI = '📱';  // Telegram icon
 
 class MessageRelay {
     constructor(mappings) {
@@ -22,6 +22,36 @@ class MessageRelay {
 
     findTelegramMapping(groupId) {
         return this.mappings.find(m => m.telegram.groupId === groupId.toString());
+    }
+
+    // Helper function to convert Discord formatting to Telegram
+    convertDiscordToTelegramFormat(text) {
+        return text
+            // Bold: **text** -> *text*
+            .replace(/\*\*(.*?)\*\*/g, '*$1*')
+            // Italic: *text* -> _text_
+            .replace(/\*(.*?)\*/g, '_$1_')
+            // Code blocks: `code` -> `code`
+            .replace(/`(.*?)`/g, '`$1`')
+            // Multi-line code blocks: ```code``` -> ```code```
+            .replace(/```(.*?)```/gs, '```$1```')
+            // Strikethrough: ~~text~~ -> ~text~
+            .replace(/~~(.*?)~~/g, '~$1~');
+    }
+
+    // Helper function to convert Telegram formatting to Discord
+    convertTelegramToDiscordFormat(text) {
+        return text
+            // Bold: *text* -> **text**
+            .replace(/\*(.*?)\*/g, '**$1**')
+            // Italic: _text_ -> *text*
+            .replace(/_(.*?)_/g, '*$1*')
+            // Code blocks: `code` -> `code`
+            .replace(/`(.*?)`/g, '`$1`')
+            // Multi-line code blocks: ```code``` -> ```code```
+            .replace(/```(.*?)```/gs, '```$1```')
+            // Strikethrough: ~text~ -> ~~text~~
+            .replace(/~(.*?)~/g, '~~$1~~');
     }
 
     async relayToTelegram(message) {
@@ -77,8 +107,26 @@ class MessageRelay {
                 message: `[DS] | ${message.author.tag}: ${message.content}`
             });
 
-            const formattedMessage = `[DS] | ${message.author.tag}: ${message.content}`;
-            await this.telegramBot.api.sendMessage(telegramChat.id, formattedMessage);
+            // Get user's avatar URL if available
+            const avatarUrl = message.author.displayAvatarURL({ format: 'png', size: 64 });
+            
+            // Convert Discord formatting to Telegram formatting
+            const formattedContent = this.convertDiscordToTelegramFormat(message.content);
+            
+            // Format message with Telegram's native formatting
+            const formattedMessage = `${DISCORD_EMOJI} *${message.author.username}* (${message.guild.name})\n${formattedContent}`;
+            
+            // Send message with avatar if available
+            if (avatarUrl) {
+                await this.telegramBot.api.sendPhoto(telegramChat.id, avatarUrl, {
+                    caption: formattedMessage,
+                    parse_mode: 'MarkdownV2'
+                });
+            } else {
+                await this.telegramBot.api.sendMessage(telegramChat.id, formattedMessage, {
+                    parse_mode: 'MarkdownV2'
+                });
+            }
         } catch (error) {
             console.error('Failed to relay message to Telegram:', error);
         }
@@ -141,7 +189,35 @@ class MessageRelay {
             });
 
             const channel = await this.discordBot.channels.fetch(discordChannel.id);
-            await channel.send(`[TG] | ${message.from.username || message.from.first_name}: ${message.text}`);
+            
+            // Get user's profile photo if available
+            let avatarUrl = null;
+            if (message.from.photo) {
+                const photos = await this.telegramBot.api.getUserProfilePhotos(message.from.id);
+                if (photos.total_count > 0) {
+                    const file = await this.telegramBot.api.getFile(photos.photos[0][0].file_id);
+                    avatarUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_TOKEN}/${file.file_path}`;
+                }
+            }
+
+            // Convert Telegram formatting to Discord formatting
+            const formattedContent = this.convertTelegramToDiscordFormat(message.text);
+
+            // Create Discord embed
+            const embed = {
+                author: {
+                    name: `${message.from.username || message.from.first_name}`,
+                    icon_url: avatarUrl || 'https://telegram.org/img/t_logo.svg'
+                },
+                description: formattedContent,
+                color: 0x0088cc, // Telegram blue
+                footer: {
+                    text: `${TELEGRAM_EMOJI} Telegram`
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            await channel.send({ embeds: [embed] });
         } catch (error) {
             console.error('Failed to relay message to Discord:', error);
             if (error.code === 50035) {

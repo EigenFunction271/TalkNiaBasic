@@ -22,6 +22,15 @@ async function startTelegramBot(relay) {
                 } catch (e) {
                     // Ignore stop errors
                 }
+
+                // Additional cleanup steps
+                try {
+                    // Force close any existing getUpdates
+                    await bot.api.getUpdates({ offset: -1, limit: 1 });
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                } catch (e) {
+                    console.log('Cleanup getUpdates status:', e.message);
+                }
             } catch (error) {
                 console.log('Cleanup status:', error.message);
             }
