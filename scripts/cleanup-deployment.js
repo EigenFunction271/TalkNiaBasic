@@ -3,13 +3,13 @@ const https = require('https');
 // Configuration
 const RENDER_API_KEY = process.env.RENDER_API_KEY;
 const SERVICE_ID = process.env.RENDER_SERVICE_ID;
-const RENDER_API_BASE = 'api.render.com/v1';
+const RENDER_API_BASE = 'https://api.render.com/v1';
 
 async function makeRequest(path, method = 'GET') {
     return new Promise((resolve, reject) => {
         const options = {
-            hostname: RENDER_API_BASE,
-            path: path,
+            hostname: 'api.render.com',
+            path: `/v1${path}`,
             method: method,
             headers: {
                 'Authorization': `Bearer ${RENDER_API_KEY}`
