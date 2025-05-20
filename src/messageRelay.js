@@ -24,19 +24,27 @@ class MessageRelay {
         return this.mappings.find(m => m.telegram.groupId === groupId.toString());
     }
 
+    // Helper function to escape special characters for Telegram MarkdownV2
+    escapeTelegramMarkdown(text) {
+        return text.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+    }
+
     // Helper function to convert Discord formatting to Telegram
     convertDiscordToTelegramFormat(text) {
+        // First escape all special characters
+        text = this.escapeTelegramMarkdown(text);
+        
         return text
             // Bold: **text** -> *text*
-            .replace(/\*\*(.*?)\*\*/g, '*$1*')
+            .replace(/\\\*\\\*(.*?)\\\*\\\*/g, '*$1*')
             // Italic: *text* -> _text_
-            .replace(/\*(.*?)\*/g, '_$1_')
+            .replace(/\\\*(.*?)\\\*/g, '_$1_')
             // Code blocks: `code` -> `code`
-            .replace(/`(.*?)`/g, '`$1`')
+            .replace(/\\`(.*?)\\`/g, '`$1`')
             // Multi-line code blocks: ```code``` -> ```code```
-            .replace(/```(.*?)```/gs, '```$1```')
+            .replace(/\\`\\`\\`(.*?)\\`\\`\\`/gs, '```$1```')
             // Strikethrough: ~~text~~ -> ~text~
-            .replace(/~~(.*?)~~/g, '~$1~');
+            .replace(/\\~\\~(.*?)\\~\\~/g, '~$1~');
     }
 
     // Helper function to convert Telegram formatting to Discord
@@ -114,7 +122,9 @@ class MessageRelay {
             const formattedContent = this.convertDiscordToTelegramFormat(message.content);
             
             // Format message with Telegram's native formatting
-            const formattedMessage = `${DISCORD_EMOJI} *${message.author.username}* (${message.guild.name})\n${formattedContent}`;
+            const username = this.escapeTelegramMarkdown(message.author.username);
+            const serverName = this.escapeTelegramMarkdown(message.guild.name);
+            const formattedMessage = `${DISCORD_EMOJI} *${username}* \\(${serverName}\\)\n${formattedContent}`;
             
             // Send message with avatar if available
             if (avatarUrl) {
@@ -129,6 +139,13 @@ class MessageRelay {
             }
         } catch (error) {
             console.error('Failed to relay message to Telegram:', error);
+            // Fallback to plain text if formatting fails
+            try {
+                const plainMessage = `${DISCORD_EMOJI} ${message.author.username} (${message.guild.name})\n${message.content}`;
+                await this.telegramBot.api.sendMessage(telegramChat.id, plainMessage);
+            } catch (fallbackError) {
+                console.error('Failed to send fallback message:', fallbackError);
+            }
         }
     }
 
